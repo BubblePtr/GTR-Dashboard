@@ -48,3 +48,4 @@ cache/
 # Frontend
 node_modules/
 dist/
+.vite/
