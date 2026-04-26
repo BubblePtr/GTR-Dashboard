@@ -1,12 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ListChecks, PlayCircle, Settings, History, Menu, X } from 'lucide-react'
+import { LayoutDashboard, ListChecks, PanelLeftClose, PanelLeftOpen, PlayCircle, Settings } from 'lucide-react'
 import { useDashboardStore } from '../store/dashboardStore'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/topics', label: '选题管理', icon: ListChecks },
   { to: '/pipeline', label: 'Pipeline', icon: PlayCircle },
-  { to: '/history', label: '历史对比', icon: History },
   { to: '/settings', label: '设置', icon: Settings },
 ]
 
@@ -15,47 +14,56 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? 'w-56' : 'w-0'
+          sidebarOpen ? 'w-44' : 'w-14'
         } transition-all duration-200 bg-white border-r border-gray-200 flex-shrink-0 overflow-hidden`}
       >
-        <div className="p-4">
-          <h1 className="text-lg font-bold text-gray-900 mb-6">GTR Dashboard</h1>
-          <nav className="space-y-1">
+        <div className="p-3">
+          <div
+            className={`mb-6 flex items-center gap-2 ${
+              sidebarOpen ? 'justify-between' : 'justify-center'
+            }`}
+          >
+            {sidebarOpen ? (
+              <h1 className="truncate text-base font-bold text-gray-900">GTR</h1>
+            ) : null}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="h-8 w-8 shrink-0 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 flex items-center justify-center"
+              aria-label={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
+              title={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
+            >
+              {sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+            </button>
+          </div>
+          <nav className={`space-y-1 ${sidebarOpen ? '' : 'flex flex-col items-center'}`}>
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`
-                }
+                title={item.label}
+                className={({ isActive }) => {
+                  const state = isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                  const base = 'rounded-md text-sm font-medium transition-colors'
+
+                  return sidebarOpen
+                    ? `flex w-full items-center gap-3 px-2.5 py-2 ${base} ${state}`
+                    : `flex h-8 w-8 items-center justify-center ${base} ${state}`
+                }}
               >
-                <item.icon size={18} />
-                {item.label}
+                <item.icon size={18} className="shrink-0" />
+                {sidebarOpen && <span className="truncate">{item.label}</span>}
               </NavLink>
             ))}
           </nav>
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600"
-          >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <span className="text-sm text-gray-500">本地AI实战派选题工作台</span>
-        </header>
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-5">{children}</main>
       </div>
     </div>
   )

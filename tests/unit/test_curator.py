@@ -22,7 +22,7 @@ class TestCuratorEmptyInput:
         assert report.total_analyzed == 0
         assert report.total_selected == 0
         assert report.topics == []
-        assert "No topics" in report.report_summary
+        assert "今日无选题" in report.report_summary
 
 
 class TestCuratorScoring:
@@ -91,21 +91,21 @@ class TestCuratorSelectionReason:
         scores = {"novelty": 5, "utility": 5, "local_ai": 9, "doc_quality": 5}
 
         report = curator.rank_with_scores([(topic, scores)], default_prefs)
-        assert "local" in report.topics[0].selection_reason.lower()
+        assert "本地AI" in report.topics[0].selection_reason
 
     def test_novelty_reason(self, curator: CuratorAgent, default_prefs: UserPreference) -> None:
         topic = TopicSuggestion(profile_id=1, differentiation_angle="Test")
         scores = {"novelty": 9, "utility": 5, "local_ai": 5, "doc_quality": 5}
 
         report = curator.rank_with_scores([(topic, scores)], default_prefs)
-        assert "novelty" in report.topics[0].selection_reason.lower()
+        assert "新颖度" in report.topics[0].selection_reason
 
     def test_balanced_fallback(self, curator: CuratorAgent, default_prefs: UserPreference) -> None:
         topic = TopicSuggestion(profile_id=1, differentiation_angle="Test")
         scores = {"novelty": 5, "utility": 5, "local_ai": 5, "doc_quality": 5}
 
         report = curator.rank_with_scores([(topic, scores)], default_prefs)
-        assert "balanced" in report.topics[0].selection_reason.lower()
+        assert "综合评分平衡" in report.topics[0].selection_reason
 
 
 class TestCuratorSummary:
@@ -122,6 +122,6 @@ class TestCuratorSummary:
         ]
 
         report = curator.rank_with_scores(scores, default_prefs)
-        assert "3 topics" in report.report_summary
-        assert "High-potential" in report.report_summary
-        assert "Medium-potential" in report.report_summary
+        assert "3 个选题" in report.report_summary
+        assert "高潜力选题" in report.report_summary
+        assert "中等潜力选题" in report.report_summary

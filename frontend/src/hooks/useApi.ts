@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { Topic, TopicStats, PipelineRun, Preference, Weight, HistoryPoint, ChatMessage, TopicChatResponse } from '../types'
+import type { Topic, TopicStats, PipelineRun, Preference, Weight, HistoryPoint, ChatMessage, TopicChatResponse, TopicReviewSession } from '../types'
 
 export function useTopics(status?: string, date?: string) {
   return useQuery({
@@ -12,6 +12,40 @@ export function useTopics(status?: string, date?: string) {
       const { data } = await api.get<Topic[]>(`/topics?${params}`)
       return data
     },
+  })
+}
+
+export function useTodayTopics(limit = 8) {
+  return useQuery({
+    queryKey: ['todayTopics', limit],
+    queryFn: async () => {
+      const { data } = await api.get<Topic[]>(`/topics/today?limit=${limit}`)
+      return data
+    },
+  })
+}
+
+export function useTopicPool(status?: string, limit = 50) {
+  return useQuery({
+    queryKey: ['topicPool', status, limit],
+    queryFn: async () => {
+      const params = new URLSearchParams({ scope: 'pool', limit: String(limit) })
+      if (status) params.append('status', status)
+      const { data } = await api.get<Topic[]>(`/topics?${params}`)
+      return data
+    },
+  })
+}
+
+export function useTopicReviewSession(topicId: number | null) {
+  return useQuery({
+    queryKey: ['topicReview', topicId],
+    queryFn: async () => {
+      if (!topicId) return null
+      const { data } = await api.get<TopicReviewSession>(`/topics/${topicId}/review`)
+      return data
+    },
+    enabled: !!topicId,
   })
 }
 
@@ -34,16 +68,24 @@ export function useUpdateTopicAction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['topics'] })
+      qc.invalidateQueries({ queryKey: ['todayTopics'] })
+      qc.invalidateQueries({ queryKey: ['topicPool'] })
       qc.invalidateQueries({ queryKey: ['topicStats'] })
     },
   })
 }
 
 export function useTopicChat() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ topicId, message, history }: { topicId: number; message: string; history: ChatMessage[] }) => {
       const { data } = await api.post<TopicChatResponse>(`/topics/${topicId}/chat`, { message, history })
       return data
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['topicReview', variables.topicId] })
+      qc.invalidateQueries({ queryKey: ['todayTopics'] })
+      qc.invalidateQueries({ queryKey: ['topicPool'] })
     },
   })
 }
@@ -96,6 +138,8 @@ export function useTriggerPipeline() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pipelineRuns'] })
+      qc.invalidateQueries({ queryKey: ['todayTopics'] })
+      qc.invalidateQueries({ queryKey: ['topicPool'] })
     },
   })
 }

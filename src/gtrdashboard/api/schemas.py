@@ -7,7 +7,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-
 # --- Pipeline ---
 
 class PipelineRunConfig(BaseModel):
@@ -62,6 +61,7 @@ class TopicOut(BaseModel):
     """Topic suggestion with project info for frontend."""
 
     id: int
+    candidate_id: Optional[int] = None
     profile_id: Optional[int]
     project_name: Optional[str] = None
     github_url: Optional[str] = None
@@ -81,6 +81,54 @@ class TopicOut(BaseModel):
     generation_status: str
     created_at: datetime
     action: str = "pending"
+    review_state: str = "未聊"
+    message_count: int = 0
+    first_seen_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
+    seen_count: int = 1
+    latest_topic_id: Optional[int] = None
+
+
+class ReviewSignalOut(BaseModel):
+    """Structured learning signal extracted during topic review."""
+
+    id: int
+    topic_id: int
+    candidate_id: Optional[int] = None
+    message_id: Optional[int] = None
+    signal_type: str
+    label: str
+    polarity: str
+    strength: int
+    created_at: datetime
+
+
+class ReviewSignalIn(BaseModel):
+    """Structured learning signal emitted by the reviewer agent."""
+
+    signal_type: str
+    label: str
+    polarity: str = "neutral"
+    strength: int = Field(default=3, ge=1, le=5)
+
+
+class ReviewMessageOut(BaseModel):
+    """Persisted chat message in a topic review session."""
+
+    id: int
+    topic_id: int
+    candidate_id: Optional[int] = None
+    role: str
+    content: str
+    created_at: datetime
+
+
+class TopicReviewSessionOut(BaseModel):
+    """Full review state for one topic."""
+
+    topic: TopicOut
+    messages: list[ReviewMessageOut]
+    signals: list[ReviewSignalOut]
 
 
 class TopicActionUpdate(BaseModel):
@@ -113,6 +161,7 @@ class TopicChatResponse(BaseModel):
     response: str
     action: Optional[str] = None
     refined_content: Optional[str] = None
+    signals: list[ReviewSignalIn] = Field(default_factory=list)
 
 
 class TopicContentUpdate(BaseModel):

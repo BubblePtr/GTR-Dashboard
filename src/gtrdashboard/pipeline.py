@@ -17,7 +17,6 @@ Failure handling:
 from __future__ import annotations
 
 import asyncio
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -29,7 +28,7 @@ from gtrdashboard.agents.curator import CuratorAgent, DailyReport
 from gtrdashboard.agents.exa_collector import ExaCollectorAgent, ExaCollectorConfig
 from gtrdashboard.agents.profiler import ProfilerConfig, ProjectProfilerAgent
 from gtrdashboard.agents.search_collector import SearchCollectorAgent, SearchCollectorConfig
-from gtrdashboard.agents.strategist import StrategistConfig, ContentStrategistAgent
+from gtrdashboard.agents.strategist import ContentStrategistAgent, StrategistConfig
 from gtrdashboard.database import (
     create_pipeline_run,
     create_pipeline_run_stage,
@@ -43,10 +42,10 @@ from gtrdashboard.database import (
     save_profiles,
     save_raw_projects,
     save_topics,
+    upsert_topic_candidates,
 )
 from gtrdashboard.models import (
     PipelineRun,
-    PipelineRunStage,
     ProjectProfile,
     RawProject,
     ScoringWeight,
@@ -185,6 +184,7 @@ class PipelineOrchestrator:
 
         session = get_session()
         preferences = get_or_create_preferences(session)
+        weights = get_or_create_weights(session)
 
         # Start pipeline tracking
         if existing_run_id:
@@ -237,7 +237,7 @@ class PipelineOrchestrator:
             topics = save_topics(session, topics)
 
             # Stage 4: Curate
-            report = self._stage_curate(topics, profiles, preferences, projects)
+            report = self._stage_curate(topics, profiles, preferences, weights, projects)
             stage_curate = create_pipeline_run_stage(session, run.id, "curate", "running")
 
             # Write final_score back to each topic
@@ -247,6 +247,7 @@ class PipelineOrchestrator:
                     topic.final_score = topic_score_map[topic.id]
             session.add_all(topics)
             session.commit()
+            upsert_topic_candidates(session, topics)
 
             finish_pipeline_run_stage(session, stage_curate.id, "complete", 100)
 
@@ -402,6 +403,7 @@ class PipelineOrchestrator:
         topics: list[TopicSuggestion],
         profiles: list[ProjectProfile],
         preferences: UserPreference,
+        weights: ScoringWeight,
         projects: list[RawProject],
     ) -> DailyReport:
         """Curate topics using weighted scoring."""
@@ -430,7 +432,11 @@ class PipelineOrchestrator:
                     profile_project_urls[profile.id] = project.github_url
 
         report = self.curator.rank_with_scores(
-            topics_with_scores, preferences, profile_project_names, profile_project_urls
+            topics_with_scores,
+            preferences,
+            profile_project_names,
+            profile_project_urls,
+            weights,
         )
         print(f"[Pipeline] Curated {report.total_selected} topics")
         return report
