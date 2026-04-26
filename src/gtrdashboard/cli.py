@@ -9,24 +9,18 @@ Commands:
 from __future__ import annotations
 
 import asyncio
-import os
 from pathlib import Path
-from typing import Optional
 
 import typer
-from dotenv import load_dotenv
-
-# Load environment variables from .env file (project root)
-_env_path = Path(__file__).parent.parent.parent / ".env"
-if _env_path.exists():
-    load_dotenv(_env_path, override=False)
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
 
+from gtrdashboard.config import load_project_env
 from gtrdashboard.database import get_or_create_preferences, get_session, init_db
-from gtrdashboard.models import UserPreference
 from gtrdashboard.pipeline import PipelineConfig, PipelineOrchestrator
+
+load_project_env()
 
 app = typer.Typer(
     name="gtr",
@@ -41,7 +35,7 @@ REPORTS_DIR = Path(__file__).parent.parent.parent / "reports"
 
 @app.command()
 def run(
-    languages: Optional[list[str]] = typer.Option(
+    languages: list[str] | None = typer.Option(
         None, "--lang", help="Filter languages (default: python, typescript, go)"
     ),
     limit: int = typer.Option(50, "--limit", help="Max repos to collect"),
@@ -53,7 +47,7 @@ def run(
         "--source",
         help="Data source: tavily | exa | both | legacy",
     ),
-    exa_query: Optional[str] = typer.Option(
+    exa_query: str | None = typer.Option(
         None, "--exa-query", help="Custom Exa semantic search query"
     ),
     model: str = typer.Option(
@@ -111,7 +105,7 @@ def run(
 
 @app.command()
 def report(
-    date: Optional[str] = typer.Option(None, "--date", help="Report date (YYYY-MM-DD)"),
+    date: str | None = typer.Option(None, "--date", help="Report date (YYYY-MM-DD)"),
 ) -> None:
     """Display the latest (or specified) daily report."""
     if date:

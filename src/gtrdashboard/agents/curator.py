@@ -19,7 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from gtrdashboard.models import TopicSuggestion, UserPreference
+from gtrdashboard.models import ScoringWeight, TopicSuggestion, UserPreference
+from gtrdashboard.scoring import ScoreInput, ScoringService
 
 
 @dataclass
@@ -139,6 +140,7 @@ class CuratorAgent:
         preferences: UserPreference,
         project_names: dict[int, str] = {},
         project_urls: dict[int, str] = {},
+        weights: Optional[ScoringWeight] = None,
     ) -> DailyReport:
         """Rank topics with explicit profile scores.
 
@@ -163,22 +165,19 @@ class CuratorAgent:
                 total_selected=0,
             )
 
-        # Clamp user weight to [0, 1]
-        user_weight = max(0.0, min(1.0, preferences.local_ai_weight))
-
-        # Map engagement estimate to boost score
-        engagement_map = {"high": 10, "medium": 6, "low": 3}
+        active_weights = weights or ScoringWeight(local_ai_weight=preferences.local_ai_weight)
+        scoring = ScoringService(active_weights)
 
         scored: list[tuple[TopicSuggestion, float, str]] = []
         for topic, scores in topics_with_scores:
-            engagement_boost = engagement_map.get(topic.engagement_estimate, 3)
-
-            final_score = (
-                scores.get("novelty", 5) * 0.15
-                + scores.get("utility", 5) * 0.20
-                + scores.get("local_ai", 5) * user_weight
-                + scores.get("doc_quality", 5) * 0.10
-                + engagement_boost * 0.25
+            result = scoring.score(
+                ScoreInput(
+                    novelty=scores.get("novelty", 5),
+                    utility=scores.get("utility", 5),
+                    local_ai=scores.get("local_ai", 5),
+                    doc_quality=scores.get("doc_quality", 5),
+                    engagement_estimate=topic.engagement_estimate,
+                )
             )
 
             # Generate selection reason
@@ -189,11 +188,11 @@ class CuratorAgent:
                 reasons.append("本地部署能力强")
             if scores.get("novelty", 5) >= 8:
                 reasons.append("高新颖度")
-            if engagement_boost >= 8:
+            if topic.engagement_estimate == "high":
                 reasons.append("高互动潜力")
 
             reason = reasons[0] if reasons else "综合评分平衡"
-            scored.append((topic, final_score, reason))
+            scored.append((topic, result.final_score, reason))
 
         # Sort by score descending
         scored.sort(key=lambda x: x[1], reverse=True)

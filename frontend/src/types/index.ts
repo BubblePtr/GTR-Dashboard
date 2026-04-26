@@ -1,5 +1,6 @@
 export interface Topic {
   id: number
+  candidate_id: number | null
   profile_id: number | null
   project_name: string | null
   github_url: string | null
@@ -19,6 +20,12 @@ export interface Topic {
   generation_status: string
   created_at: string
   action: string
+  review_state: string
+  message_count: number
+  first_seen_at: string | null
+  last_seen_at: string | null
+  seen_count: number
+  latest_topic_id: number | null
 }
 
 export interface ChatMessage {
@@ -30,6 +37,34 @@ export interface TopicChatResponse {
   response: string
   action: string | null
   refined_content: string | null
+  signals: ReviewSignal[]
+}
+
+export interface ReviewMessage {
+  id: number
+  topic_id: number
+  candidate_id?: number | null
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+export interface ReviewSignal {
+  id?: number
+  topic_id?: number
+  candidate_id?: number | null
+  message_id?: number | null
+  signal_type: string
+  label: string
+  polarity: string
+  strength: number
+  created_at?: string
+}
+
+export interface TopicReviewSession {
+  topic: Topic
+  messages: ReviewMessage[]
+  signals: ReviewSignal[]
 }
 
 export interface TopicStats {

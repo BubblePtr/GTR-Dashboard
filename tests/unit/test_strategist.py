@@ -60,7 +60,7 @@ class TestStrategistDegradation:
             local_ai_relevance=5,
         )
         topic = strategist._degraded_topic(profile)
-        assert "Interesting project" in topic.draft_tweet
+        assert "一个有趣的项目" in topic.draft_tweet
 
 
 class TestStrategistContextBuilding:

@@ -53,6 +53,7 @@ class TopicSuggestion(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     profile_id: Optional[int] = Field(default=None, foreign_key="project_profiles.id")
+    candidate_id: Optional[int] = Field(default=None, foreign_key="topic_candidates.id")
     why_post: Optional[str] = None
     differentiation_angle: Optional[str] = None
     target_audience: Optional[str] = None
@@ -71,6 +72,22 @@ class TopicSuggestion(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class TopicCandidate(SQLModel, table=True):
+    """Stable candidate pool entry keyed by GitHub project URL."""
+
+    __tablename__ = "topic_candidates"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    github_url: str = Field(index=True, unique=True)
+    project_name: Optional[str] = None
+    first_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    seen_count: int = Field(default=1)
+    latest_topic_id: Optional[int] = Field(default=None, foreign_key="topic_suggestions.id")
+    status: str = Field(default="pending")  # pending | approved | published | skipped
+    final_score: Optional[float] = None
+
+
 class UserAction(SQLModel, table=True):
     """User feedback on topic suggestions."""
 
@@ -78,9 +95,48 @@ class UserAction(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     topic_id: Optional[int] = Field(default=None, foreign_key="topic_suggestions.id")
+    candidate_id: Optional[int] = Field(default=None, foreign_key="topic_candidates.id")
     action: str = Field(default="pending")  # pending | approved | published | skipped
     notes: Optional[str] = None
     acted_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TopicReviewMessage(SQLModel, table=True):
+    """Persisted chat message for reviewing a topic."""
+
+    __tablename__ = "topic_review_messages"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic_id: int = Field(foreign_key="topic_suggestions.id", index=True)
+    candidate_id: Optional[int] = Field(default=None, foreign_key="topic_candidates.id", index=True)
+    role: str  # user | assistant
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TopicReviewSignal(SQLModel, table=True):
+    """Structured preference signal extracted from a review conversation."""
+
+    __tablename__ = "topic_review_signals"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic_id: int = Field(foreign_key="topic_suggestions.id", index=True)
+    candidate_id: Optional[int] = Field(default=None, foreign_key="topic_candidates.id", index=True)
+    message_id: Optional[int] = Field(default=None, foreign_key="topic_review_messages.id")
+    signal_type: str  # preference | concern | requirement | adoption_reason | rejection_reason
+    label: str
+    polarity: str = Field(default="neutral")  # positive | negative | neutral
+    strength: int = Field(default=3, ge=1, le=5)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ReviewSignalInput(SQLModel):
+    """Input shape for creating a review signal."""
+
+    signal_type: str
+    label: str
+    polarity: str = "neutral"
+    strength: int = Field(default=3, ge=1, le=5)
 
 
 class PipelineRun(SQLModel, table=True):

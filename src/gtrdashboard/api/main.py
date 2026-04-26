@@ -16,7 +16,10 @@ from gtrdashboard.api.routers import (
     topics,
     weights,
 )
+from gtrdashboard.config import load_project_env
 from gtrdashboard.database import init_db
+
+load_project_env()
 
 
 @asynccontextmanager

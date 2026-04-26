@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlmodel import Session, select
@@ -35,7 +33,7 @@ def get_history(
         # Calculate average score of selected topics for this run
         # We approximate by looking at topics created on the same date
         avg_score = db.exec(
-            select(func.avg(TopicSuggestion.priority_score))
+            select(func.avg(TopicSuggestion.final_score))
             .where(func.date(TopicSuggestion.created_at) == date_str)
         ).one()
 

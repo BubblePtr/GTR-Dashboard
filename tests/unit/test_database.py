@@ -4,6 +4,7 @@ import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from gtrdashboard.database import (
+    init_db,
     get_or_create_preferences,
     save_profiles,
     save_raw_projects,
@@ -115,3 +116,43 @@ class TestSaveTopics:
         saved = save_topics(session, topics)
         assert saved[0].id is not None
         assert saved[0].generation_status == "complete"
+
+
+class TestSchemaMigration:
+    def test_init_db_adds_missing_topic_review_columns(self, tmp_path, monkeypatch) -> None:
+        db_path = tmp_path / "legacy.db"
+        engine = create_engine(f"sqlite:///{db_path}", echo=False)
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                """
+                CREATE TABLE topic_suggestions (
+                    id INTEGER PRIMARY KEY,
+                    profile_id INTEGER,
+                    why_post VARCHAR,
+                    differentiation_angle VARCHAR,
+                    target_audience VARCHAR,
+                    engagement_estimate VARCHAR NOT NULL,
+                    draft_tweet VARCHAR,
+                    draft_script VARCHAR,
+                    draft_outline VARCHAR,
+                    priority_score FLOAT,
+                    final_score FLOAT,
+                    generation_status VARCHAR NOT NULL,
+                    generation_reason VARCHAR,
+                    created_at DATETIME NOT NULL
+                )
+                """
+            )
+
+        monkeypatch.setattr("gtrdashboard.database.engine", engine)
+        init_db()
+
+        with engine.connect() as conn:
+            columns = {
+                row[1] for row in conn.exec_driver_sql("PRAGMA table_info(topic_suggestions)")
+            }
+
+        assert "user_edited_draft_tweet" in columns
+        assert "user_edited_draft_script" in columns
+        assert "user_edited_draft_outline" in columns
+        assert "review_notes" in columns

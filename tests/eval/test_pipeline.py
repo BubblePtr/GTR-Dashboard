@@ -162,7 +162,7 @@ class TestPipelineHappyPath:
             # Report file should exist
             assert report_path.exists()
             content = report_path.read_text(encoding="utf-8")
-            assert "GitHub Trending Daily Report" in content
+            assert "GitHub Trending 每日选题报告" in content
             assert "LLMs at home" in content
 
     async def test_report_formatting(
@@ -194,11 +194,11 @@ class TestPipelineHappyPath:
             lines = content.split("\n")
 
             # Should have headers for each topic
-            topic_headers = [l for l in lines if l.startswith("## #")]
+            topic_headers = [line for line in lines if line.startswith("## 第")]
             assert len(topic_headers) == 2
 
             # Should include draft content
-            assert "Draft Tweet" in content
+            assert "推文草稿" in content
             assert "Check out this local LLM runner!" in content
 
 
@@ -305,7 +305,7 @@ class TestPipelineCaching:
                     doc_quality_score=7,
                     local_ai_relevance=7,
                     analysis_status="complete",
-                    analyzed_at=datetime.now(),
+                    analyzed_at=datetime.utcnow(),
                 )
                 session.add(cached_profile)
                 session.commit()
